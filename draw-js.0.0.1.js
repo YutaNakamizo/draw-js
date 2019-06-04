@@ -42,6 +42,8 @@ const DrawArea = class {
     }
 
     container.addEventListener("touchstart",e=>{
+      e.preventDefault();
+
       //window.prev_time = new Date();
       const position = getPosition(this.container,e.touches[0].clientX,e.touches[0].clientY);
       console.log(`x: ${position.x}\ny: ${position.y}`);
@@ -50,6 +52,8 @@ const DrawArea = class {
       this.currentLine = line;
     });
     container.addEventListener("touchmove",e=>{
+      e.preventDefault();
+
       /*const curr_time = new Date();
       console.log((curr_time.getTime() - window.prev_time.getTime()));
       window.prev_time = curr_time;*/
@@ -59,6 +63,7 @@ const DrawArea = class {
       this.currentLine.addPoint(position.x, position.y);
     });
     container.addEventListener("touchend",e=>{
+      e.preventDefault();
       this.currentLine = null;
     });
 
