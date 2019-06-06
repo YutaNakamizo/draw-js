@@ -1,6 +1,31 @@
 const drawJs = class {
   static createArea(element) {return new DrawArea(element);}
   static svgNS() {return "http://www.w3.org/2000/svg";}
+
+  static calcControlPoint(p0,p1,p2) {
+    const A = (p1.x-p0.x) * p2.y;
+    const B = (p2.x-p0.x) * p1.y;
+    const C = (p2.x-p1.x) * p0.y;
+    //const x = p1.x * (A-B+C) / (A-B-C);
+    //const y = ((x-p0.x)*p1.y + (x-p1.x)*p0.y) / (p1.x-p0.x);
+    console.log(`
+      p0: ${p0.x}, ${p0.y}
+      p1: ${p1.x}, ${p1.y}
+      p2: ${p2.x}, ${p2.y}
+    `);
+
+    const x
+      = ((p1.x/(p2.x-p1.x)*(p2.y-p1.y))-(p0.x/(p1.x-p0.x)*(p1.y-p0.y))-p1.y+p0.y) / ((p2.y-p1.y)/(p2.x-p1.x)-(p1.y-p0.y)/(p1.x-p0.x));
+    const rtnX = Number.isNaN(x) ? p1.x:x;
+
+    const y
+      = ((p1.y-p0.y)/(p1.x-p0.x))*(x-p0.x)+p0.y;
+    const rtnY = Number.isNaN(y) ? p1.y:y;
+
+    const rtn = {x:rtnX, y:rtnY, dx:rtnX-p0.x, dy:rtnY-p0.y};
+    console.log(rtn);
+    return rtn;
+  }
 };
 
 
@@ -46,9 +71,8 @@ const DrawArea = class {
 
       //window.prev_time = new Date();
       const position = getPosition(this.container,e.touches[0].clientX,e.touches[0].clientY);
-      console.log(`x: ${position.x}\ny: ${position.y}`);
       this.createPoint(position.x, position.y);
-      const line = this.createLine(position.x, position.y);
+      const line = this.createLine().addPoint(position.x, position.y);
       this.currentLine = line;
     });
     container.addEventListener("touchmove",e=>{
@@ -58,7 +82,6 @@ const DrawArea = class {
       console.log((curr_time.getTime() - window.prev_time.getTime()));
       window.prev_time = curr_time;*/
       const position = getPosition(this.container,e.touches[0].clientX,e.touches[0].clientY);
-      console.log(`x: ${position.x}\ny: ${position.y}`);
       this.createPoint(position.x, position.y);
       this.currentLine.addPoint(position.x, position.y);
     });
@@ -79,8 +102,8 @@ const DrawArea = class {
     return this;
   }
 
-  createLine(x, y) {
-    const line = new Line(this.container, x, y);
+  createLine() {
+    const line = new Line(this.container);
     this.lines.push(line);
     return line;
   }
@@ -98,7 +121,6 @@ const Point = class {
     circle.setAttribute("stroke", "transparent");
     circle.setAttribute("fill", "#ff0000");
 
-    console.log(`x: ${x}\ny: ${y}`);
     container.appendChild(circle);
 
     this.class = "Point";
@@ -110,76 +132,68 @@ const Point = class {
 
 /* CLASS Line */
 const Line = class {
-  constructor(container, x, y, options) {
-    const path = document.createElementNS(drawJs.svgNS(),"path");
-    path.setAttribute(
-      "d",
-      `M${x} ${y}`
-    );
-    // In the Future: Set Options (like Styles).
-    path.setAttribute(
-      "stroke",
-      "#000000"
-    );
-    path.setAttribute(
-      "fill",
-      "transparent"
-    );
-
-    container.appendChild(path);
-
+  constructor(container, options) {
     this.class = "Line";
-    this.points = [{x:x,y:y}];
-    this.deltaPoints = [{dx:0,dy:0}];
-    this.path = path;
+    this.container = container;
+    this.points = [];
+    this.controlPoints = [];
+    this.path = [];
+    this.options = options;
   }
 
   addPoint(x,y) {
+    if(this.points.length === 0) { // This is just adding a point.
+      this.points.push({x:x,y:y});
+      return this;
+    }
+
     const prev_point = this.points[this.points.length-1];
     const dx = x - prev_point.x;
     const dy = y - prev_point.y;
-    this.points.push({x:x, y:y});
-    this.deltaPoints.push({dx:dx, dy:dy});
 
-    const prev_path_d = this.path.getAttribute("d");
-    switch(this.points.length) {
-      case 2: // Create Simple Line
-        this.path.setAttribute(
-          "d",
-          prev_path_d + ` l ${dx} ${dy}`
-        );
-        break;
-      case 3: // Create First Control-Points
-        const p = this.points;
-        const dX12 = p[1].x - p[0].x;
-        const dY12 = p[1].y - p[0].y;
-        const dX23 = p[2].x - p[1].x;
-        const dY23 = p[2].y - p[1].y;
-        const at = ((dY12/dX12) + (dY23/dX23))/2;
-        const an = dX12/dY12;
-        const m12 = {x:(p[0].x+p[1].x)/2, y:(p[0].y+p[1].y)/2};
-        const control_x = ((m12.y - p[1].y) - (an*m12.x - at*p[1].x)) / (at-an);
-        const control_y = an*control_x + m12.y - an*m12.x;
-        const delta_control_x = control_x - p[0].x;
-        const delta_control_y = control_y - p[0].y;
-        this.path.setAttribute(
-          "d",
-          `M${p[0].x} ${p[0].y} q ${delta_control_x} ${delta_control_y} ${dx} ${dy}`
-        );
-        this.controlPoint = {x:control_x, y:control_y};
-        this.deltaControlPoint = {dx:delta_control_x, dy:delta_control_y};
-        break;
-      default: // Only Add Point
-        this.path.setAttribute(
-          "d",
-          prev_path_d + ` t ${dx} ${dy}`
-        );
-        break;
+    if(this.points.length >= 2) { // modify the control point of previous path
+      const prev_path = this.path[this.path.length-1];
+
+      const p0 = this.points[this.points.length-2];
+      const p1 = prev_point;
+      const p2 = {x:x,y:y}
+
+      const control_point = drawJs.calcControlPoint(p0,p1,p2);
+      prev_path.setAttribute(
+        'd',
+        `M ${p0.x} ${p0.y} q ${control_point.dx} ${control_point.dy} ${p1.x-p0.x} ${p1.y-p0.y}`
+      );
+      
+      const dot = document.createElementNS(drawJs.svgNS(),"circle");
+      dot.setAttribute("stroke","#00ff00");
+      dot.setAttribute("fill","transparent");
+      dot.setAttribute("r","1.5");
+      dot.setAttribute("cx",control_point.x);
+      dot.setAttribute("cy",control_point.y);
+      this.container.appendChild(dot);
     }
-    /*this.path.setAttribute(
-      "d",
-      prev_path_d + ` l ${dx} ${dy}`
-    );*/
+    
+    // calc new path; NOTE: new_path is a strait line.
+    const new_path = document.createElementNS(drawJs.svgNS(),"path");
+    new_path.setAttribute(
+      'd',
+      `M ${prev_point.x} ${prev_point.y} l ${dx} ${dy}`
+    );
+
+    // In the future: this.options will be abailable.
+    new_path.setAttribute(
+      "stroke",
+      "#000000"
+    );
+    new_path.setAttribute(
+      "fill",
+      "transparent"
+    );
+    
+    this.container.appendChild(new_path);
+
+    this.points.push({x:x,y:y, dx:dx,dy:dx});
+    this.path.push(new_path);
     return this;
   }
 }
