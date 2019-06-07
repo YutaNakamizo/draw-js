@@ -1,6 +1,65 @@
 const drawJs = class {
   static createArea(element) {return new DrawArea(element);}
   static svgNS() {return "http://www.w3.org/2000/svg";}
+
+  static calcControlPoint(p_k2, p_k1, p_k) {
+    // bector of 2 lines based on p_k1
+    const vA = {
+      x: p_k2.x - p_k1.x,
+      y: p_k2.y - p_k1.y
+    };
+    const vB = {
+      x: p_k.x - p_k1.x,
+      y: p_k.y - p_k1.y
+    };
+
+    // cos(alpha), sin(alpha), alpha, beta, phi, sin(phi), cos(phi) 
+    let cosAlpha = (vA.x*vB.x + vA.y*vB.y) / (Math.sqrt(Math.pow(vA.x,2)+Math.pow(vA.y,2)) * Math.sqrt(Math.pow(vB.x,2)+Math.pow(vB.y,2)));
+    if(cosAlpha<-1) cosAlpha = -1;
+    else if(1<cosAlpha) cosAlpha = 1;
+
+    const sinAlpha = Math.sqrt(1 - Math.pow(cosAlpha,2));
+
+    //console.log(`cosAlpha: ${cosAlpha}`)
+    const alpha = Math.acos(cosAlpha);
+    const beta = alpha<(Math.PI/2) ? (sinAlpha*Math.PI/2) : ((1+Math.sin(alpha-(Math.PI/2)))*Math.PI/2);
+    const phi = (beta-alpha) / 2;
+
+    //console.log(`alpha: ${alpha/Math.PI*180}\nbeta: ${beta/Math.PI*180}`)
+
+    const cosPhi = Math.cos(phi);
+    const sinPhi = Math.sin(phi);
+
+    // l/L
+    const l_L = Math.cos(alpha/2)//1-alpha/Math.PI;
+
+    // c2_k2
+    const dx_k2 = p_k2.x - p_k1.x;
+    const dy_k2 = p_k2.y - p_k1.y;
+    const c2_k2_k1 = {
+      x: l_L * (dx_k2*cosPhi - dy_k2*sinPhi) + p_k1.x,
+      y: l_L * (dx_k2*sinPhi + dy_k2*cosPhi) + p_k1.y
+    };
+    // c1_k1
+    const dx_k = p_k.x - p_k1.x;
+    const dy_k = p_k.y - p_k1.y;
+    const c1_k1_k = {
+      x: l_L * (dx_k*cosPhi + dy_k*sinPhi) + p_k1.x,
+      y: l_L * (- dx_k*sinPhi + dy_k*cosPhi) + p_k1.y
+    };
+
+    return [{
+      x: c2_k2_k1.x,
+      y: c2_k2_k1.y,
+      dx: c2_k2_k1.x - p_k2.x,
+      dy: c2_k2_k1.y - p_k2.y
+    }, {
+      x: c1_k1_k.x,
+      y: c1_k1_k.y,
+      dx: c1_k1_k.x - p_k1.x,
+      dy: c1_k1_k.y - p_k1.y
+    }];
+  }
 };
 
 
@@ -33,54 +92,38 @@ const DrawArea = class {
     parent.appendChild(container);
 
     /* Add EventListener To SVG Container */
-    const getPosition = (target,clientX,clientY)=>{
-      const target_position = target.getBoundingClientRect();
-      return {
-        x: clientX - target_position.top + window.pageXOffset,
-        y: clientY - target_position.left + window.pageYOffset
-      };
-    }
-
-    container.addEventListener("touchstart",e=>{
-      e.preventDefault();
-
-      //window.prev_time = new Date();
-      const position = getPosition(this.container,e.touches[0].clientX,e.touches[0].clientY);
-      console.log(`x: ${position.x}\ny: ${position.y}`);
-      this.createPoint(position.x, position.y);
-      const line = this.createLine(position.x, position.y);
-      this.currentLine = line;
-    });
-    container.addEventListener("touchmove",e=>{
-      e.preventDefault();
-
-      /*const curr_time = new Date();
-      console.log((curr_time.getTime() - window.prev_time.getTime()));
-      window.prev_time = curr_time;*/
-      const position = getPosition(this.container,e.touches[0].clientX,e.touches[0].clientY);
-      console.log(`x: ${position.x}\ny: ${position.y}`);
-      this.createPoint(position.x, position.y);
-      this.currentLine.addPoint(position.x, position.y);
-    });
-    container.addEventListener("touchend",e=>{
-      e.preventDefault();
-      this.currentLine = null;
-    });
 
     /* Set Class Object */
     this.class = "DrawArea";
     this.parent = parent;
     this.container = container;
-    this.lines = new Array();
+    this.lines = [];
   }
 
-  createPoint(x, y) {
-    new Point(this.container, x, y);
+  addEventListener(eventName, callback, preventDefault) {
+    this.container.addEventListener(eventName, e=>{
+      if(preventDefault) e.preventDefault();
+
+
+      const getPosition = (target,clientX,clientY)=>{
+        const target_position = target.getBoundingClientRect();
+        return {
+          x: clientX - target_position.top + window.pageXOffset,
+          y: clientY - target_position.left + window.pageYOffset
+        };
+      }
+
+      callback(e, getPosition(this.container, e.touches[0].clientX, e.touches[0].clientY));
+    });
+  }
+
+  createPoint(x, y, options) {
+    new Point(this.container, x, y, options);
     return this;
   }
 
-  createLine(x, y) {
-    const line = new Line(this.container, x, y);
+  createLine(options) {
+    const line = new Line(this.container, options);
     this.lines.push(line);
     return line;
   }
@@ -90,15 +133,17 @@ const DrawArea = class {
 
 /* CLASS Point */
 const Point = class {
-  constructor(container, x, y) {
+  constructor(container, x, y, options) {
+    if(!options) options = {};
+
     const circle = document.createElementNS(drawJs.svgNS(), "circle");
     circle.setAttribute("cx", x);
     circle.setAttribute("cy", y);
-    circle.setAttribute("r", 1.5);
-    circle.setAttribute("stroke", "transparent");
-    circle.setAttribute("fill", "#ff0000");
+    circle.setAttribute("r", options.r || 1.5);
+    circle.setAttribute("stroke", options.stroke || "transparent");
+    circle.setAttribute("fill", options.fill || "#ff0000");
 
-    console.log(`x: ${x}\ny: ${y}`);
+    //console.log(`x: ${x}\ny: ${y}`);
     container.appendChild(circle);
 
     this.class = "Point";
@@ -110,76 +155,110 @@ const Point = class {
 
 /* CLASS Line */
 const Line = class {
-  constructor(container, x, y, options) {
-    const path = document.createElementNS(drawJs.svgNS(),"path");
-    path.setAttribute(
-      "d",
-      `M${x} ${y}`
-    );
-    // In the Future: Set Options (like Styles).
-    path.setAttribute(
-      "stroke",
-      "#000000"
-    );
-    path.setAttribute(
-      "fill",
-      "transparent"
-    );
+  static createPathAttribute(o) {
+    return `M ${o.points[0].x} ${o.points[0].y} c ${o.controls[0].dx} ${o.controls[0].dy} ${o.controls[1].dx} ${o.controls[1].dy} ${o.points[1].dx} ${o.points[1].dy}`;
+  }
 
-    container.appendChild(path);
-
+  constructor(container, options) {
     this.class = "Line";
-    this.points = [{x:x,y:y}];
-    this.deltaPoints = [{dx:0,dy:0}];
-    this.path = path;
+    this.points = [];
+    this.path = [];
+    this.container = container;
+    this.options = options;
   }
 
   addPoint(x,y) {
-    const prev_point = this.points[this.points.length-1];
-    const dx = x - prev_point.x;
-    const dy = y - prev_point.y;
-    this.points.push({x:x, y:y});
-    this.deltaPoints.push({dx:dx, dy:dy});
-
-    const prev_path_d = this.path.getAttribute("d");
-    switch(this.points.length) {
-      case 2: // Create Simple Line
-        this.path.setAttribute(
-          "d",
-          prev_path_d + ` l ${dx} ${dy}`
-        );
-        break;
-      case 3: // Create First Control-Points
-        const p = this.points;
-        const dX12 = p[1].x - p[0].x;
-        const dY12 = p[1].y - p[0].y;
-        const dX23 = p[2].x - p[1].x;
-        const dY23 = p[2].y - p[1].y;
-        const at = ((dY12/dX12) + (dY23/dX23))/2;
-        const an = dX12/dY12;
-        const m12 = {x:(p[0].x+p[1].x)/2, y:(p[0].y+p[1].y)/2};
-        const control_x = ((m12.y - p[1].y) - (an*m12.x - at*p[1].x)) / (at-an);
-        const control_y = an*control_x + m12.y - an*m12.x;
-        const delta_control_x = control_x - p[0].x;
-        const delta_control_y = control_y - p[0].y;
-        this.path.setAttribute(
-          "d",
-          `M${p[0].x} ${p[0].y} q ${delta_control_x} ${delta_control_y} ${dx} ${dy}`
-        );
-        this.controlPoint = {x:control_x, y:control_y};
-        this.deltaControlPoint = {dx:delta_control_x, dy:delta_control_y};
-        break;
-      default: // Only Add Point
-        this.path.setAttribute(
-          "d",
-          prev_path_d + ` t ${dx} ${dy}`
-        );
-        break;
+    if(this.points.length === 0) {
+      this.points.push({x:x, y:y, dx:0, dy:0});
+      return this;
     }
-    /*this.path.setAttribute(
-      "d",
-      prev_path_d + ` l ${dx} ${dy}`
-    );*/
+    else if(this.points.length === 1) {
+      const p_0 = this.points[0];
+      const dx = x - p_0.x;
+      const dy = y - p_0.y;
+
+      const path = document.createElementNS(drawJs.svgNS(),"path");
+      path.setAttribute("fill", "transparent");
+      path.setAttribute("stroke", "#000000");
+      path.setAttribute(
+        'd',
+        `M ${p_0.x} ${p_0.y }l ${dx} ${dy}`
+      );
+
+      this.path.push({
+        object: path,
+        points: [{
+          x: p_0.x,
+          y: p_0.y,
+          dx: 0,
+          dy: 0
+        }, {
+          x: x,
+          y: y,
+          dx: dx,
+          dy: dy
+        }],
+        controls: [{
+          x: p_0.x,
+          y: p_0.y,
+          dx: 0,
+          dy: 0
+        }, {
+          x: x,
+          y: y,
+          dx: dx,
+          dy: dy
+        }]
+      });
+      this.points.push({x:x, y:y, dx:dx, dy:dy});
+      this.container.appendChild(path);
+
+      return this;
+    }
+    
+    const p_k2 = this.points[this.points.length-2];
+    const p_k1 = this.points[this.points.length-1];
+    const p_k = {x:x, y:y, dx:x-p_k1.x, dy:y-p_k1.y};
+
+    const controls = drawJs.calcControlPoint(p_k2, p_k1, p_k);
+
+    const l_k2_k1 = this.path[this.path.length-1];
+    const l_k1_k = {
+      object: document.createElementNS(drawJs.svgNS(),"path"),
+      points: [{
+        x: p_k1.x,
+        y: p_k1.y,
+        dx: p_k1.dx,
+        dy: p_k1.dy
+      }, {
+        x: p_k.x,
+        y: p_k.y,
+        dx: p_k.dx,
+        dy: p_k.dy
+      }],
+      controls: [{
+        x: controls[1].x,
+        y: controls[1].y,
+        dx: controls[1].dx,
+        dy: controls[1].dy
+      }, {
+        x: p_k.x,
+        y: p_k.y,
+        dx: p_k.dx,
+        dy: p_k.dy
+      }]
+    };
+    l_k1_k.object.setAttribute("fill", "transparent");
+    l_k1_k.object.setAttribute("stroke", "#000000");
+
+    l_k2_k1.controls[1] = this.path[this.path.length-1].controls[1] = controls[0];
+    l_k2_k1.object.setAttribute('d', Line.createPathAttribute(l_k2_k1));
+    l_k1_k.object.setAttribute('d', Line.createPathAttribute(l_k1_k));
+    
+    this.path.push(l_k1_k);
+    this.points.push(p_k);
+    this.container.appendChild(l_k1_k.object);
+
     return this;
   }
 }
