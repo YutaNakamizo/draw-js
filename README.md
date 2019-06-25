@@ -1,17 +1,19 @@
 # draw-js
 Create vector lines from touch event on JavaScript.
 
+DEMO: [https://www.ggtk.dev/draw-js/demo/](https://www.ggtk.dev/draw-js/demo)
+
 ## Note:
 This script is written on ES6. If you want to use this on browsers which do not support ES6, you have to convert with Babel by yourself.
 
 ## Contact
 
-Twitter: [@NakamizoYuta](https://twitter.com/NakamizoYuta)
+Twitter: [@NakamizoYuta](https://twitter.com/NakamizoYuta)  
 Email: [yuta.nakamizo@ggtk.app](mailto:yuta.nakamizo@ggtk.app)
 
 
 ## How to use 
-### 1. Import `draw-js`.
+### 1. Import `draw-js.js`
 
 ```html
 <script src="https://www.ggtk.dev/draw-js/draw-js.min.js"></script>
@@ -19,8 +21,10 @@ Email: [yuta.nakamizo@ggtk.app](mailto:yuta.nakamizo@ggtk.app)
 
 ### 2. Setup drwa-area
 
-Create a draw-area with `drawJs.createArea(<void>)`.  
+Create a draw-area with `drawJs.createArea(parent)`.  
 This returns `DrawArea` object.
+
+You can pass the parent element to `parent`. The size, position, background of the area depends on the parent element.
 
 ```javascript
 const init = ()=>{

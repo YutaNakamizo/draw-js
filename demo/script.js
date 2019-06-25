@@ -9,7 +9,7 @@ document.addEventListener("DOMContentLoaded",()=>{
     window.line.addPoint(pos.x, pos.y);
   }, true);
 
-
+  /*
   demoPlot(
     test_area,
     [
@@ -23,14 +23,14 @@ document.addEventListener("DOMContentLoaded",()=>{
       {x: 80, y:62},
       {x:100, y:100}
     ]
-  );
+  );*/
 });
 
-
+/*
 const demoPlot = (area, points)=>{
   const line = area.createLine();
   for(let p of points) {
     area.createPoint(p.x,p.y, {r:3});
     line.addPoint(p.x,p.y);
   }
-};
+};*/
