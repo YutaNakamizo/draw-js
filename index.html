@@ -1,0 +1,50 @@
+<h1 id="draw-js">draw-js</h1>
+<p>Create vector lines from touch event on JavaScript.</p>
+<p>DEMO: <a href="https://www.ggtk.dev/draw-js/demo">https://www.ggtk.dev/draw-js/demo/</a></p>
+<h2 id="note">Note:</h2>
+<p>This script is written on ES6. If you want to use this on browsers which do not support ES6, you have to convert with Babel by yourself.</p>
+<h2 id="contact">Contact</h2>
+<p>Twitter: <a href="https://twitter.com/NakamizoYuta">@NakamizoYuta</a><br>Email: <a href="mailto:yuta.nakamizo@ggtk.app">yuta.nakamizo@ggtk.app</a></p>
+<h2 id="how-to-use">How to use</h2>
+<h3 id="1-import-draw-jsjs">1. Import <code>draw-js.js</code></h3>
+<pre><code class="language-html">&lt;script src=&quot;https://www.ggtk.dev/draw-js/draw-js.min.js&quot;&gt;&lt;/script&gt;</code></pre>
+<h3 id="2-setup-drwa-area">2. Setup drwa-area</h3>
+<p>Create a draw-area with <code>drawJs.createArea(parent)</code>.  
+This returns <code>DrawArea</code> object.</p>
+<p>You can pass the parent element to <code>parent</code>. The size, position, background of the area depends on the parent element.</p>
+<pre><code class="language-javascript">const init = ()=&gt;{
+  const draw_area = drawJs.createArea();
+};
+
+
+document.addEventListener(&quot;DOMContentLoaded&quot;, init);</code></pre>
+<h3 id="3-plot-a-point">3. Plot a point</h3>
+<p>You can use <code>&lt;DrawArea&gt;.createPoint(x, y, options)</code> method.</p>
+<p><code>x</code> and <code>y</code> is the position of the point, which is based on the left-top corner of the draw-area.</p>
+<p><code>options</code> can include <code>r</code>, which means the radius of the point, <code>stroke</code>, which means the color of the point&#39;s stroke, and <code>fill</code>, which means the color of the point.<br>Default setting is <code>r:1.5, stroke:&quot;transparent&quot;, fill:&quot;#ff0000&quot;</code>.</p>
+<h3 id="4-draw-a-line">4. Draw a line</h3>
+<p>First, create <code>Line</code> object, then add start point.</p>
+<pre><code class="language-javascript">window.line = draw_area.createLine().addPoint(x, y);</code></pre>
+<p>Next, add a point. Then a fluently line is drawn. You can check how to add points from user&#39;s touch event on &quot;5. Add event-listener&quot;. </p>
+<h3 id="5-add-event-listener">5. Add event-listener</h3>
+<p><code>DrawArea</code> class have <code>addEventListener(eventName, callback, preventDefault)</code> method.
+This method passes 2 arguments <code>Event</code> and <code>Position</code> to callback function.
+<code>Position</code> includes <code>x</code> and <code>y</code> proparties which provides the position of the point which user touches.
+Note that this position is based on the draw-area. You have to use this position to create lines or points on the area.</p>
+<p>When you set <code>preventDefalut</code> to <code>true</code>, the default operations such as scroll, zoom on the area is ignored.<br>I recommend you to set this true if you don&#39;t have any special reasons.</p>
+<pre><code class="language-javascript">const init = ()=&gt;{
+  const draw_area = drawJs.createArea();
+
+  draw_area.addEventListener(&quot;touchstart&quot;,(e,pos)=&gt;{
+    window.line = test_area.createLine().addPoint(pos.x,pos.y);
+    test_area.createPoint(pos.x,pos.y, {r:3});
+  }, true);
+
+  draw_area.addEventListener(&quot;touchmove&quot;, (e,pos)=&gt;{
+    test_area.createPoint(pos.x,pos.y, {r:3});
+    window.line.addPoint(pos.x, pos.y);
+  }, true);
+};
+
+
+document.addEventListener(&quot;DOMContentLoaded&quot;, init);</code></pre>
