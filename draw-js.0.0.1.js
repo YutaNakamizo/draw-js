@@ -22,7 +22,7 @@ const drawJs = class {
 
     //console.log(`cosAlpha: ${cosAlpha}`)
     const alpha = Math.acos(cosAlpha);
-    const beta = alpha<(Math.PI/2) ? (sinAlpha*Math.PI/2) : ((1+Math.sin(alpha-(Math.PI/2)))*Math.PI/2);
+    const beta = alpha<(Math.PI/4) ? (Math.sin(2*alpha)) : Math.PI;//((1+Math.sin(alpha-(Math.PI/2)))*Math.PI/2);
     const phi = (beta-alpha) / 2;
 
     //console.log(`alpha: ${alpha/Math.PI*180}\nbeta: ${beta/Math.PI*180}`)
@@ -31,21 +31,22 @@ const drawJs = class {
     const sinPhi = Math.sin(phi);
 
     // l/L
-    const l_L = Math.cos(alpha/2)//1-alpha/Math.PI;
+    const l_L = (1 + 3*Math.cos(alpha/2)) / 4;//1-alpha/Math.PI;
+    console.log(`l/L: ${l_L}`);
 
     // c2_k2
     const dx_k2 = p_k2.x - p_k1.x;
     const dy_k2 = p_k2.y - p_k1.y;
     const c2_k2_k1 = {
-      x: l_L * (dx_k2*cosPhi - dy_k2*sinPhi) + p_k1.x,
-      y: l_L * (dx_k2*sinPhi + dy_k2*cosPhi) + p_k1.y
+      x: l_L * (dx_k2*cosPhi + dy_k2*sinPhi) + p_k1.x,
+      y: l_L * (- dx_k2*sinPhi + dy_k2*cosPhi) + p_k1.y
     };
     // c1_k1
     const dx_k = p_k.x - p_k1.x;
     const dy_k = p_k.y - p_k1.y;
     const c1_k1_k = {
-      x: l_L * (dx_k*cosPhi + dy_k*sinPhi) + p_k1.x,
-      y: l_L * (- dx_k*sinPhi + dy_k*cosPhi) + p_k1.y
+      x: l_L * (dx_k*cosPhi - dy_k*sinPhi) + p_k1.x,
+      y: l_L * (dx_k*sinPhi + dy_k*cosPhi) + p_k1.y
     };
 
     return [{
@@ -69,8 +70,8 @@ const DrawArea = class {
     /* Prepare Paren Element */
     if(!parent) {
       parent = document.createElement("div");
-      parent.style.width = "800px";
-      parent.style.height = "600px";
+      parent.style.width = "90vw";
+      parent.style.height = "90vh";
       parent.style.backgroundColor = "#eeeeee";
       document.body.appendChild(parent);
     }
